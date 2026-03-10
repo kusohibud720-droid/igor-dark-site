@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Игорь Моисеенко</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f0f14;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* === LOGIN === */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f0f14;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-overlay.hidden { display: none; }
+        .login-box {
+            background: #1a1a24;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 48px 40px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        .login-box h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #d4a843;
+        }
+        .login-box p {
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f0f14;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+        .login-box input:focus { outline: none; border-color: #d4a843; }
+        .login-error { color: #e74c3c; font-size: 0.85rem; margin-bottom: 12px; display: none; }
+
+        /* === LAYOUT === */
+        .admin-header {
+            background: #1a1a24;
+            border-bottom: 1px solid #2a2a3a;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .admin-header h1 {
+            font-size: 1.1rem;
+            color: #d4a843;
+        }
+        .admin-body {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: 240px;
+            background: #1a1a24;
+            border-right: 1px solid #2a2a3a;
+            padding: 16px 0;
+            flex-shrink: 0;
+        }
+        .sidebar a {
+            display: block;
+            padding: 12px 24px;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .sidebar a:hover { color: #e0e0e0; background: rgba(212,168,67,0.05); }
+        .sidebar a.active {
+            color: #d4a843;
+            border-left-color: #d4a843;
+            background: rgba(212,168,67,0.08);
+        }
+
+        /* === CONTENT === */
+        .content {
+            flex: 1;
+            padding: 32px;
+            max-width: 900px;
+        }
+        .section-panel { display: none; }
+        .section-panel.active { display: block; }
+        .section-panel h2 {
+            font-size: 1.3rem;
+            margin-bottom: 24px;
+            color: #d4a843;
+        }
+
+        /* === FORMS === */
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 6px;
+            margin-top: 16px;
+        }
+        label:first-child { margin-top: 0; }
+        input[type="text"], input[type="url"], textarea, select {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0f0f14;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #d4a843; }
+        textarea { min-height: 80px; resize: vertical; }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-gold {
+            background: #d4a843;
+            color: #0f0f14;
+            font-weight: 600;
+        }
+        .btn-gold:hover { background: #e0b84f; }
+        .btn-danger {
+            background: transparent;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+        }
+        .btn-danger:hover { background: #e74c3c; color: #fff; }
+        .btn-secondary {
+            background: #2a2a3a;
+            color: #e0e0e0;
+        }
+        .btn-secondary:hover { background: #3a3a4a; }
+
+        .save-bar {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #2a2a3a;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .save-msg {
+            color: #2ecc71;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .save-msg.show { opacity: 1; }
+
+        /* === CARDS === */
+        .card {
+            background: #1a1a24;
+            border: 1px solid #2a2a3a;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .card-header h3 {
+            font-size: 1rem;
+            color: #e0e0e0;
+        }
+        .card-num {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: #d4a843;
+            color: #0f0f14;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-right: 10px;
+        }
+
+        /* === GALLERY GRID === */
+        .gallery-admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .gallery-admin-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: #1a1a24;
+            border: 1px solid #2a2a3a;
+        }
+        .gallery-admin-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .gallery-admin-item .delete-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 24px;
+            height: 24px;
+            background: rgba(231,76,60,0.9);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hint { font-size: 0.8rem; color: #666; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+        <h1>Панель управления</h1>
+        <p>Сайт Игоря Моисеенко</p>
+        <div class="login-error" id="loginError">Неверный пароль</div>
+        <input type="password" id="loginPassword" placeholder="Введите пароль" onkeydown="if(event.key==='Enter')doLogin()">
+        <br>
+        <button class="btn btn-gold" onclick="doLogin()" style="width:100%">Войти</button>
+    </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-header">
+    <h1>Управление сайтом</h1>
+    <div>
+        <button class="btn btn-secondary" onclick="window.open('site-v1-dark-premium.html','_blank')">Открыть сайт</button>
+        <button class="btn btn-danger" onclick="doLogout()" style="margin-left:8px">Выйти</button>
+    </div>
+</div>
+
+<div class="admin-body">
+    <nav class="sidebar">
+        <a href="#" data-section="hero" class="active">Главная (Hero)</a>
+        <a href="#" data-section="about">О себе</a>
+        <a href="#" data-section="services">Услуги</a>
+        <a href="#" data-section="video">Видео</a>
+        <a href="#" data-section="gallery">Галерея</a>
+        <a href="#" data-section="reviews">Отзывы</a>
+        <a href="#" data-section="faq">Частые вопросы</a>
+    </nav>
+
+    <div class="content">
+
+        <!-- HERO -->
+        <div class="section-panel active" id="panel-hero">
+            <h2>Главная секция (Hero)</h2>
+            <label>Подзаголовок (над основным)</label>
+            <input type="text" id="hero-label" placeholder="ПРОФЕССИОНАЛЬНЫЙ ВЕДУЩИЙ">
+            <label>Заголовок (строка 1)</label>
+            <input type="text" id="hero-title1" placeholder="Ваш праздник —">
+            <label>Заголовок (золотая строка)</label>
+            <input type="text" id="hero-title2" placeholder="моя работа">
+            <label>Описание</label>
+            <textarea id="hero-desc" placeholder="Свадьбы, корпоративы, юбилеи..."></textarea>
+            <label>Цитата</label>
+            <input type="text" id="hero-quote" placeholder="«Слушаю ваши пожелания...»">
+            <label>URL фото (hero)</label>
+            <input type="url" id="hero-photo" placeholder="hero-host.jpg">
+            <p class="hint">Относительный путь или полный URL</p>
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('hero')">Сохранить</button>
+                <span class="save-msg" id="msg-hero">Сохранено!</span>
+            </div>
+        </div>
+
+        <!-- ABOUT -->
+        <div class="section-panel" id="panel-about">
+            <h2>О себе</h2>
+            <label>Заголовок</label>
+            <input type="text" id="about-title" placeholder="Игорь Моисеенко — ваш ведущий">
+            <label>Подзаголовок</label>
+            <input type="text" id="about-subtitle" placeholder="Мои 5 принципов работы:">
+            <label>URL фото</label>
+            <input type="url" id="about-photo" placeholder="about-photo.jpg">
+
+            <h3 style="margin-top:24px; margin-bottom:16px; color:#d4a843;">5 принципов</h3>
+            <div id="about-principles"></div>
+
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('about')">Сохранить</button>
+                <span class="save-msg" id="msg-about">Сохранено!</span>
+            </div>
+        </div>
+
+        <!-- SERVICES -->
+        <div class="section-panel" id="panel-services">
+            <h2>Услуги</h2>
+            <div id="services-list"></div>
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('services')">Сохранить</button>
+                <span class="save-msg" id="msg-services">Сохранено!</span>
+            </div>
+        </div>
+
+        <!-- VIDEO -->
+        <div class="section-panel" id="panel-video">
+            <h2>Видео</h2>
+            <label>YouTube URL или embed-ссылка</label>
+            <input type="url" id="video-url" placeholder="https://www.youtube.com/embed/...">
+            <p class="hint">Можно вставить ссылку на канал или конкретное видео</p>
+            <label>Заголовок секции</label>
+            <input type="text" id="video-title" placeholder="Посмотрите, как это было">
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('video')">Сохранить</button>
+                <span class="save-msg" id="msg-video">Сохранено!</span>
+            </div>
+        </div>
+
+        <!-- GALLERY -->
+        <div class="section-panel" id="panel-gallery">
+            <h2>Галерея</h2>
+            <label>Добавить фото (URL)</label>
+            <div style="display:flex;gap:8px;">
+                <input type="url" id="gallery-new-url" placeholder="https://imshowman.ru/public/images/..." style="flex:1">
+                <button class="btn btn-gold" onclick="addGalleryItem()">Добавить</button>
+            </div>
+            <p class="hint">Вставьте ссылку на фото и нажмите «Добавить»</p>
+            <div class="gallery-admin-grid" id="gallery-grid"></div>
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('gallery')">Сохранить</button>
+                <span class="save-msg" id="msg-gallery">Сохранено!</span>
+            </div>
+        </div>
+
+        <!-- REVIEWS -->
+        <div class="section-panel" id="panel-reviews">
+            <h2>Отзывы</h2>
+            <div id="reviews-list"></div>
+            <button class="btn btn-secondary" onclick="addReview()" style="margin-top:16px">+ Добавить отзыв</button>
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('reviews')">Сохранить</button>
+                <span class="save-msg" id="msg-reviews">Сохранено!</span>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="section-panel" id="panel-faq">
+            <h2>Частые вопросы</h2>
+            <div id="faq-list"></div>
+            <button class="btn btn-secondary" onclick="addFaq()" style="margin-top:16px">+ Добавить вопрос</button>
+            <div class="save-bar">
+                <button class="btn btn-gold" onclick="saveSection('faq')">Сохранить</button>
+                <span class="save-msg" id="msg-faq">Сохранено!</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ========== AUTH ==========
+var ADMIN_PASS = 'showman2024';
+
+function doLogin() {
+    var pw = document.getElementById('loginPassword').value;
+    if (pw === ADMIN_PASS) {
+        sessionStorage.setItem('admin_auth', 'true');
+        document.getElementById('loginOverlay').classList.add('hidden');
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+}
+
+function doLogout() {
+    sessionStorage.removeItem('admin_auth');
+    location.reload();
+}
+
+// Check auth on load
+if (sessionStorage.getItem('admin_auth') === 'true') {
+    document.getElementById('loginOverlay').classList.add('hidden');
+}
+
+// ========== SIDEBAR NAV ==========
+document.querySelectorAll('.sidebar a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.sidebar a').forEach(function(l) { l.classList.remove('active'); });
+        document.querySelectorAll('.section-panel').forEach(function(p) { p.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById('panel-' + this.dataset.section).classList.add('active');
+    });
+});
+
+// ========== DATA DEFAULTS ==========
+var defaults = {
+    hero: {
+        label: 'ПРОФЕССИОНАЛЬНЫЙ ВЕДУЩИЙ',
+        title1: 'Ваш праздник —',
+        title2: 'моя работа',
+        desc: 'Свадьбы, корпоративы, юбилеи и любые мероприятия.\nСоздаю атмосферу, которую запомнят все гости.',
+        quote: '«Слышу ваши пожелания, а не советую как лучше»',
+        photo: 'hero-host.jpg'
+    },
+    about: {
+        title: 'Игорь Моисеенко — <span class="gold-text">ваш ведущий</span>',
+        subtitle: 'Мои 5 принципов работы:',
+        photo: 'about-photo.jpg',
+        principles: [
+            'Мы слышим Вас, а не «советуем как лучше»!',
+            'Если Вы не знаете, чего хотите — вот тогда у нас огромный выбор как устроить ваш праздник!',
+            'Музыка настроена идеально. Звук объемный.',
+            'Даже тот, кто не любит праздники — остается впечатлен и удивлен!',
+            '(остальное расскажем при встрече, чтоб не подсмотрели конкуренты)'
+        ]
+    },
+    services: [
+        { icon: '💍', title: 'Свадьбы', desc: 'Самый важный день в вашей жизни заслуживает безупречного ведения. Романтика, веселье и трогательные моменты — всё в идеальном балансе.' },
+        { icon: '🏢', title: 'Корпоративы', desc: 'От элегантных бизнес-ужинов до зажигательных корпоративных вечеринок. Тимбилдинг, конкурсы и программы под вашу корпоративную культуру.' },
+        { icon: '🎂', title: 'Юбилеи', desc: 'Юбилей — это история жизни, рассказанная через праздник. Объединю поколения на одном торжестве.' },
+        { icon: '🎓', title: 'Выпускные', desc: 'Яркое завершение важного этапа жизни. Современная программа для выпускников, родителей и преподавателей.' },
+        { icon: '🎉', title: 'Частные вечеринки', desc: 'День рождения, гендер-пати, тематическая вечеринка — любой повод станет незабываемым событием.' },
+        { icon: '🎪', title: 'Тематические мероприятия', desc: 'Квизы, интеллектуальные игры, тематические шоу. Уникальные форматы, которые удивят даже самых искушённых гостей.' }
+    ],
+    video: {
+        url: 'https://www.youtube.com/embed?listType=user_uploads&list=UCIAcyVeizoo91jH__wkHXIQ',
+        title: 'Посмотрите, как <span class="gold-text">это было</span>'
+    },
+    gallery: [
+        'https://imshowman.ru/public/images/gallery4/14.jpg',
+        'https://imshowman.ru/public/images/gallery4/13.jpg',
+        'https://imshowman.ru/public/images/gallery4/12.jpg',
+        'https://imshowman.ru/public/images/gallery4/11.jpg',
+        'https://imshowman.ru/public/images/gallery4/10.jpg',
+        'https://imshowman.ru/public/images/gallery4/09.jpg',
+        'https://imshowman.ru/public/images/gallery4/08.jpg',
+        'https://imshowman.ru/public/images/gallery4/07.jpg'
+    ],
+    reviews: [
+        { text: 'Если ищете ведущего для свадьбы — смело выбирайте Игоря! Он умеет держать внимание зала, чувствует настроение гостей и мгновенно реагирует на изменения.', author: 'Свадьба', event: 'imshowman.ru' },
+        { text: 'Игорь, мы даже не предполагали, что с ведущим может быть так круто и комфортно. Вы реальный профессионал своего дела.', author: 'Павел и Алина', event: 'Свадьба' },
+        { text: 'Прошло пару дней после выпускного, а приятные ощущения от него остаются. Твоя программа была просто идеальным попаданием в наши запросы.', author: 'Выпускной 9 класс', event: 'imshowman.ru' },
+        { text: 'Спасибо огромное за прекрасно проведённый юбилей Виктории. Программа, конкурсы — всё было свежее и интересное!', author: 'Юбилей Виктории', event: 'imshowman.ru' },
+        { text: 'Получилось ровно так, как хотелось! Не навязчиво, конкурсов в меру. Опросила ещё родственников — все в восторге!', author: 'Свадьба', event: 'imshowman.ru' },
+        { text: 'Хочу выразить огромную благодарность ведущему Игорю — он смог развеселить, затанцевать, сделать всё вовремя!', author: 'Праздник', event: 'imshowman.ru' }
+    ],
+    faq: [
+        { q: 'Какие мероприятия вы проводите?', a: 'Провожу свадьбы, корпоративы, юбилеи, выпускные, презентации и любые торжественные мероприятия в Москве и Подмосковье.' },
+        { q: 'Сколько стоят ваши услуги?', a: 'Стоимость зависит от формата и продолжительности мероприятия. Оставьте заявку — я подготовлю индивидуальное предложение под ваш бюджет и пожелания.' },
+        { q: 'За сколько нужно бронировать дату?', a: 'Рекомендую бронировать дату за 2–3 месяца, особенно в сезон свадеб (май–сентябрь). Но иногда удаётся вписаться и за пару недель — звоните, обсудим!' },
+        { q: 'Выезжаете ли за пределы Москвы?', a: 'Да, выезжаю в Подмосковье и другие регионы. Расстояние — не помеха для отличного праздника.' },
+        { q: 'Есть ли у вас своё оборудование?', a: 'Да, работаю с собственным профессиональным звуковым и DJ-оборудованием. Музыка настроена идеально, звук объёмный — это один из моих принципов.' }
+    ]
+};
+
+// ========== LOAD DATA ==========
+function getData(section) {
+    var stored = localStorage.getItem('site_' + section);
+    if (stored) {
+        try { return JSON.parse(stored); } catch(e) {}
+    }
+    return defaults[section];
+}
+
+function showSaveMsg(section) {
+    var msg = document.getElementById('msg-' + section);
+    msg.classList.add('show');
+    setTimeout(function() { msg.classList.remove('show'); }, 2000);
+}
+
+// ========== HERO ==========
+function loadHero() {
+    var d = getData('hero');
+    document.getElementById('hero-label').value = d.label || '';
+    document.getElementById('hero-title1').value = d.title1 || '';
+    document.getElementById('hero-title2').value = d.title2 || '';
+    document.getElementById('hero-desc').value = d.desc || '';
+    document.getElementById('hero-quote').value = d.quote || '';
+    document.getElementById('hero-photo').value = d.photo || '';
+}
+
+// ========== ABOUT ==========
+function loadAbout() {
+    var d = getData('about');
+    document.getElementById('about-title').value = (d.title || '').replace(/<[^>]+>/g, '');
+    document.getElementById('about-subtitle').value = d.subtitle || '';
+    document.getElementById('about-photo').value = d.photo || '';
+    var container = document.getElementById('about-principles');
+    container.innerHTML = '';
+    (d.principles || []).forEach(function(p, i) {
+        container.innerHTML += '<div class="card"><div class="card-header"><span><span class="card-num">' + (i+1) + '</span> Принцип ' + (i+1) + '</span></div><textarea id="principle-' + i + '">' + p + '</textarea></div>';
+    });
+}
+
+// ========== SERVICES ==========
+function loadServices() {
+    var d = getData('services');
+    var container = document.getElementById('services-list');
+    container.innerHTML = '';
+    d.forEach(function(s, i) {
+        container.innerHTML += '<div class="card"><div class="card-header"><h3>' + s.icon + ' ' + s.title + '</h3><button class="btn btn-danger" onclick="removeService(' + i + ')">Удалить</button></div><label>Иконка (эмодзи)</label><input type="text" id="svc-icon-' + i + '" value="' + s.icon + '"><label>Название</label><input type="text" id="svc-title-' + i + '" value="' + escHtml(s.title) + '"><label>Описание</label><textarea id="svc-desc-' + i + '">' + escHtml(s.desc) + '</textarea></div>';
+    });
+}
+
+function removeService(i) {
+    var d = getData('services');
+    d.splice(i, 1);
+    localStorage.setItem('site_services', JSON.stringify(d));
+    loadServices();
+}
+
+// ========== VIDEO ==========
+function loadVideo() {
+    var d = getData('video');
+    document.getElementById('video-url').value = d.url || '';
+    document.getElementById('video-title').value = (d.title || '').replace(/<[^>]+>/g, '');
+}
+
+// ========== GALLERY ==========
+function loadGallery() {
+    var d = getData('gallery');
+    var grid = document.getElementById('gallery-grid');
+    grid.innerHTML = '';
+    d.forEach(function(url, i) {
+        grid.innerHTML += '<div class="gallery-admin-item"><img src="' + url + '" alt="Фото ' + (i+1) + '"><button class="delete-btn" onclick="removeGalleryItem(' + i + ')">×</button></div>';
+    });
+}
+
+function addGalleryItem() {
+    var input = document.getElementById('gallery-new-url');
+    var url = input.value.trim();
+    if (!url) return;
+    var d = getData('gallery');
+    d.push(url);
+    localStorage.setItem('site_gallery', JSON.stringify(d));
+    input.value = '';
+    loadGallery();
+}
+
+function removeGalleryItem(i) {
+    var d = getData('gallery');
+    d.splice(i, 1);
+    localStorage.setItem('site_gallery', JSON.stringify(d));
+    loadGallery();
+}
+
+// ========== REVIEWS ==========
+function loadReviews() {
+    var d = getData('reviews');
+    var container = document.getElementById('reviews-list');
+    container.innerHTML = '';
+    d.forEach(function(r, i) {
+        container.innerHTML += '<div class="card"><div class="card-header"><h3>Отзыв ' + (i+1) + '</h3><button class="btn btn-danger" onclick="removeReview(' + i + ')">Удалить</button></div><label>Текст отзыва</label><textarea id="rev-text-' + i + '">' + escHtml(r.text) + '</textarea><label>Автор / Тип события</label><input type="text" id="rev-author-' + i + '" value="' + escHtml(r.author) + '"><label>Событие / Источник</label><input type="text" id="rev-event-' + i + '" value="' + escHtml(r.event) + '"></div>';
+    });
+}
+
+function addReview() {
+    var d = getData('reviews');
+    d.push({ text: '', author: '', event: '' });
+    localStorage.setItem('site_reviews', JSON.stringify(d));
+    loadReviews();
+    // Scroll to new review
+    var container = document.getElementById('reviews-list');
+    container.lastElementChild.scrollIntoView({ behavior: 'smooth' });
+}
+
+function removeReview(i) {
+    var d = getData('reviews');
+    d.splice(i, 1);
+    localStorage.setItem('site_reviews', JSON.stringify(d));
+    loadReviews();
+}
+
+// ========== FAQ ==========
+function loadFaq() {
+    var d = getData('faq');
+    var container = document.getElementById('faq-list');
+    container.innerHTML = '';
+    d.forEach(function(f, i) {
+        container.innerHTML += '<div class="card"><div class="card-header"><h3>Вопрос ' + (i+1) + '</h3><button class="btn btn-danger" onclick="removeFaq(' + i + ')">Удалить</button></div><label>Вопрос</label><input type="text" id="faq-q-' + i + '" value="' + escHtml(f.q) + '"><label>Ответ</label><textarea id="faq-a-' + i + '">' + escHtml(f.a) + '</textarea></div>';
+    });
+}
+
+function addFaq() {
+    var d = getData('faq');
+    d.push({ q: '', a: '' });
+    localStorage.setItem('site_faq', JSON.stringify(d));
+    loadFaq();
+    var container = document.getElementById('faq-list');
+    container.lastElementChild.scrollIntoView({ behavior: 'smooth' });
+}
+
+function removeFaq(i) {
+    var d = getData('faq');
+    d.splice(i, 1);
+    localStorage.setItem('site_faq', JSON.stringify(d));
+    loadFaq();
+}
+
+// ========== SAVE ==========
+function saveSection(section) {
+    var data;
+    switch(section) {
+        case 'hero':
+            data = {
+                label: document.getElementById('hero-label').value,
+                title1: document.getElementById('hero-title1').value,
+                title2: document.getElementById('hero-title2').value,
+                desc: document.getElementById('hero-desc').value,
+                quote: document.getElementById('hero-quote').value,
+                photo: document.getElementById('hero-photo').value
+            };
+            break;
+        case 'about':
+            var principles = [];
+            for (var i = 0; i < 5; i++) {
+                var el = document.getElementById('principle-' + i);
+                if (el) principles.push(el.value);
+            }
+            data = {
+                title: document.getElementById('about-title').value,
+                subtitle: document.getElementById('about-subtitle').value,
+                photo: document.getElementById('about-photo').value,
+                principles: principles
+            };
+            break;
+        case 'services':
+            data = [];
+            var cards = document.querySelectorAll('#services-list .card');
+            cards.forEach(function(card, i) {
+                data.push({
+                    icon: document.getElementById('svc-icon-' + i).value,
+                    title: document.getElementById('svc-title-' + i).value,
+                    desc: document.getElementById('svc-desc-' + i).value
+                });
+            });
+            break;
+        case 'video':
+            data = {
+                url: document.getElementById('video-url').value,
+                title: document.getElementById('video-title').value
+            };
+            break;
+        case 'gallery':
+            // Gallery saves on add/remove, but also save current state
+            data = getData('gallery');
+            break;
+        case 'reviews':
+            data = [];
+            var revCards = document.querySelectorAll('#reviews-list .card');
+            revCards.forEach(function(card, i) {
+                data.push({
+                    text: document.getElementById('rev-text-' + i).value,
+                    author: document.getElementById('rev-author-' + i).value,
+                    event: document.getElementById('rev-event-' + i).value
+                });
+            });
+            break;
+        case 'faq':
+            data = [];
+            var faqCards = document.querySelectorAll('#faq-list .card');
+            faqCards.forEach(function(card, i) {
+                data.push({
+                    q: document.getElementById('faq-q-' + i).value,
+                    a: document.getElementById('faq-a-' + i).value
+                });
+            });
+            break;
+    }
+    localStorage.setItem('site_' + section, JSON.stringify(data));
+    showSaveMsg(section);
+}
+
+// ========== UTILS ==========
+function escHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}
+
+// ========== INIT ==========
+loadHero();
+loadAbout();
+loadServices();
+loadVideo();
+loadGallery();
+loadReviews();
+loadFaq();
+</script>
+
+</body>
+</html>
