@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Посты ИМ">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="manifest" href="post-generator-manifest.json">
+    <title>Генератор постов — Игорь Моисеенко</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#0a0a0f; color:#e0ddd5; font-family:'Inter',sans-serif; line-height:1.7; }
+        .container { max-width:800px; margin:0 auto; padding:30px 20px 60px; }
+
+        .header { text-align:center; padding:40px 0 30px; border-bottom:1px solid rgba(212,175,55,0.3); margin-bottom:30px; }
+        .header h1 { font-size:1.6rem; color:#d4af37; margin-bottom:6px; }
+        .header p { color:#888; font-size:0.9rem; }
+
+        .section { background:rgba(255,255,255,0.03); border:1px solid rgba(212,175,55,0.15); border-radius:12px; padding:24px; margin-bottom:20px; }
+        .section h2 { color:#d4af37; font-size:1.1rem; margin-bottom:14px; }
+
+        label { display:block; color:#aaa; font-size:0.85rem; margin-bottom:4px; margin-top:12px; }
+        label:first-child { margin-top:0; }
+
+        input, select, textarea {
+            width:100%; padding:10px 14px; background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#e0ddd5;
+            font-family:inherit; font-size:0.92rem; outline:none; transition:border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { border-color:rgba(212,175,55,0.5); }
+        textarea { min-height:60px; resize:vertical; }
+        select option { background:#1a1a2e; color:#e0ddd5; }
+
+        .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+        .btn {
+            padding:10px 20px; border:none; border-radius:8px; cursor:pointer;
+            font-family:inherit; font-size:0.9rem; font-weight:500; transition:all 0.2s;
+        }
+        .btn-gold { background:#d4af37; color:#0a0a0f; }
+        .btn-gold:hover { background:#e8c44a; }
+        .btn-outline { background:transparent; border:1px solid rgba(212,175,55,0.3); color:#d4af37; }
+        .btn-outline:hover { background:rgba(212,175,55,0.1); }
+        .btn-copy { background:rgba(76,175,80,0.15); color:#66bb6a; border:1px solid rgba(76,175,80,0.3); }
+        .btn-copy:hover { background:rgba(76,175,80,0.25); }
+
+        .result { display:none; }
+        .result.visible { display:block; }
+        .result-box {
+            background:rgba(255,255,255,0.02); border:1px solid rgba(212,175,55,0.2);
+            border-radius:8px; padding:20px; margin:12px 0; white-space:pre-line;
+            font-size:0.9rem; line-height:1.8; cursor:text; user-select:all;
+        }
+        .result-label { font-size:0.8rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+        .copied-msg { color:#66bb6a; font-size:0.85rem; display:none; margin-left:10px; }
+        .copied-msg.show { display:inline; }
+
+        .templates { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+        .tmpl-btn {
+            padding:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08);
+            border-radius:8px; cursor:pointer; text-align:left; transition:border-color 0.2s;
+        }
+        .tmpl-btn:hover { border-color:rgba(212,175,55,0.4); }
+        .tmpl-btn strong { color:#d4af37; font-size:0.88rem; display:block; margin-bottom:2px; }
+        .tmpl-btn span { color:#888; font-size:0.8rem; }
+
+        .tip { background:rgba(212,175,55,0.05); border-left:3px solid rgba(212,175,55,0.4); padding:12px 16px; margin-top:16px; border-radius:0 8px 8px 0; font-size:0.85rem; color:#aaa; }
+
+        .btn-vk { background:rgba(39,135,245,0.15); color:#4a9af5; border:1px solid rgba(39,135,245,0.3); }
+        .btn-vk:hover { background:rgba(39,135,245,0.25); }
+        .btn-tg { background:rgba(0,136,204,0.15); color:#29b6f6; border:1px solid rgba(0,136,204,0.3); }
+        .btn-tg:hover { background:rgba(0,136,204,0.25); }
+        .btn-both { background:rgba(212,175,55,0.12); color:#d4af37; border:1px solid rgba(212,175,55,0.3); }
+        .btn-both:hover { background:rgba(212,175,55,0.2); }
+
+        .status-msg { font-size:0.85rem; margin-top:10px; padding:8px 12px; border-radius:6px; display:none; }
+        .status-msg.show { display:block; }
+        .status-msg.ok { background:rgba(76,175,80,0.1); color:#66bb6a; border:1px solid rgba(76,175,80,0.2); }
+        .status-msg.err { background:rgba(244,67,54,0.1); color:#ef5350; border:1px solid rgba(244,67,54,0.2); }
+        .status-msg.info { background:rgba(33,150,243,0.1); color:#42a5f5; border:1px solid rgba(33,150,243,0.2); }
+
+        .settings-toggle { color:#888; font-size:0.85rem; cursor:pointer; border:none; background:none; font-family:inherit; padding:4px 0; }
+        .settings-toggle:hover { color:#d4af37; }
+        .settings-body { display:none; margin-top:12px; }
+        .settings-body.open { display:block; }
+        .small-note { font-size:0.78rem; color:#666; margin-top:4px; }
+
+        .photo-preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+        .photo-preview img { width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid rgba(212,175,55,0.2); }
+        .photo-preview .remove-photo { position:absolute; top:-4px; right:-4px; width:18px; height:18px; background:#ef5350; color:#fff; border:none; border-radius:50%; font-size:11px; cursor:pointer; line-height:18px; text-align:center; }
+        .photo-preview .photo-item { position:relative; }
+
+        @media(max-width:500px) { .templates { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>Генератор постов для VK</h1>
+        <p>Из реальных данных Игоря — за 30 секунд</p>
+    </div>
+
+    <!-- ШАБЛОНЫ -->
+    <div class="section">
+        <h2>1. Выбери тип поста</h2>
+        <div class="templates">
+            <div class="tmpl-btn" onclick="selectTemplate('review')">
+                <strong>Из отзыва клиента</strong>
+                <span>Цитата + закрытие страха</span>
+            </div>
+            <div class="tmpl-btn" onclick="selectTemplate('story')">
+                <strong>История с мероприятия</strong>
+                <span>Что случилось и как решили</span>
+            </div>
+            <div class="tmpl-btn" onclick="selectTemplate('useful')">
+                <strong>Полезный совет</strong>
+                <span>Советы при выборе ведущего</span>
+            </div>
+            <div class="tmpl-btn" onclick="selectTemplate('behind')">
+                <strong>Закулисье</strong>
+                <span>Подготовка, настройка звука</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ДАННЫЕ -->
+    <div class="section">
+        <h2>2. Заполни данные</h2>
+
+        <label for="eventType">Тип мероприятия</label>
+        <select id="eventType">
+            <option value="">Выбери...</option>
+            <option value="Свадьба">Свадьба</option>
+            <option value="Корпоратив">Корпоратив</option>
+            <option value="Юбилей">Юбилей</option>
+            <option value="Выпускной">Выпускной</option>
+            <option value="День рождения">День рождения</option>
+            <option value="Вечеринка">Вечеринка</option>
+        </select>
+
+        <label for="clientName">Имя клиента (необязательно)</label>
+        <input type="text" id="clientName" placeholder="Например: Павел и Алина">
+
+        <label for="quote">Цитата из отзыва или яркий момент</label>
+        <textarea id="quote" placeholder="Например: «Получилось ровно так, как хотелось!»"></textarea>
+
+        <label for="detail">Деталь / подробность (необязательно)</label>
+        <textarea id="detail" placeholder="Например: 80 гостей, ресторан «Метрополь», танцевали до 3 утра"></textarea>
+
+        <label for="fear">Какой страх закрывает?</label>
+        <select id="fear">
+            <option value="">Выбери страх клиента...</option>
+            <option value="template">Шаблонные конкурсы</option>
+            <option value="boring">Гости заскучают</option>
+            <option value="listen">Не будет слушать пожелания</option>
+            <option value="sound">Плохой звук</option>
+            <option value="age">Не подойдёт по возрасту</option>
+            <option value="experience">Мало опыта</option>
+            <option value="approach">Не найдёт подход к гостям</option>
+            <option value="price">Непрозрачная цена</option>
+            <option value="contract">Нет договора</option>
+            <option value="alcohol">Алкоголь</option>
+        </select>
+
+        <label for="photos">Фото к посту (до 10 шт.)</label>
+        <input type="file" id="photos" accept="image/*" multiple style="padding:8px;">
+        <div class="photo-preview" id="photoPreview"></div>
+        <div class="small-note">Посты с фото получают в 3-5 раз больше просмотров. Лучше — живые фото с эмоциями гостей.</div>
+
+        <div class="btn-row">
+            <button class="btn btn-gold" onclick="generate()">Сгенерировать пост</button>
+            <button class="btn btn-outline" onclick="clearForm()">Очистить</button>
+        </div>
+    </div>
+
+    <!-- РЕЗУЛЬТАТ -->
+    <div class="section result" id="resultSection">
+        <h2>3. Готовый пост</h2>
+        <div class="result-label">Скопируй и вставь в VK</div>
+        <div class="result-box" id="resultBox"></div>
+        <div class="btn-row">
+            <button class="btn btn-copy" onclick="copyPost()">Копировать текст</button>
+            <span class="copied-msg" id="copiedMsg">Скопировано!</span>
+            <button class="btn btn-outline" onclick="generate()">Другой вариант</button>
+        </div>
+
+        <!-- ПУБЛИКАЦИЯ -->
+        <div style="border-top:1px solid rgba(255,255,255,0.08); margin-top:16px; padding-top:16px;">
+            <div class="result-label" style="margin-bottom:10px;">Опубликовать</div>
+            <div class="btn-row">
+                <button class="btn btn-vk" onclick="publishVK()">В VK</button>
+                <button class="btn btn-tg" onclick="publishTG()">В Telegram</button>
+                <button class="btn btn-both" onclick="publishBoth()">VK + Telegram</button>
+            </div>
+            <div class="status-msg" id="publishStatus"></div>
+        </div>
+    </div>
+
+    <!-- НАСТРОЙКИ API -->
+    <div class="section">
+        <button class="settings-toggle" onclick="toggleSettings()">&#9881; Настройки API (VK + Telegram)</button>
+        <div class="settings-body" id="settingsBody">
+            <p class="small-note" style="margin-bottom:12px;">Токены сохраняются только в этом браузере (localStorage). Никуда не отправляются кроме VK/TG API.</p>
+
+            <label for="vkToken">VK Community Token</label>
+            <input type="password" id="vkToken" placeholder="vk1.a.xxxxx...">
+            <div class="small-note">Настройки сообщества → Работа с API → Создать ключ (с правом «стена»)</div>
+
+            <label for="vkGroupId">VK Group ID (число)</label>
+            <input type="text" id="vkGroupId" placeholder="Например: 123456789">
+            <div class="small-note">Число из адреса: vk.com/club<strong>123456789</strong></div>
+
+            <label for="tgToken">Telegram Bot Token</label>
+            <input type="password" id="tgToken" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v...">
+            <div class="small-note">Получить у @BotFather → /newbot</div>
+
+            <label for="tgChannel">Telegram канал/чат ID</label>
+            <input type="text" id="tgChannel" placeholder="@imshowman или -100123456789">
+            <div class="small-note">@username канала или числовой ID. Бот должен быть администратором канала.</div>
+
+            <div class="btn-row">
+                <button class="btn btn-gold" onclick="saveSettings()">Сохранить настройки</button>
+                <span class="copied-msg" id="settingsSaved">Сохранено!</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tip">
+        <strong style="color:#d4af37;">Как это работает:</strong> генератор создаёт текст из реальных данных. Проверь, подправь если нужно, и опубликуй одной кнопкой в VK и/или Telegram. Фото прикрепляются автоматически.
+    </div>
+
+    <!-- ГДЕ ЖИВЁТ ГЕНЕРАТОР -->
+    <div class="section" style="margin-top:20px;">
+        <h2>Где живёт этот генератор?</h2>
+        <p style="color:#aaa; font-size:0.88rem; margin-bottom:14px;">Сейчас — это файл на компьютере (как ярлык на рабочем столе). Открыл, сделал пост, опубликовал. Интернет нужен только в момент публикации.</p>
+
+        <div style="display:grid; gap:12px;">
+            <div style="background:rgba(76,175,80,0.06); border:1px solid rgba(76,175,80,0.2); border-radius:8px; padding:14px;">
+                <strong style="color:#66bb6a; font-size:0.9rem;">Вариант 1: Файл на компьютере</strong>
+                <p style="color:#aaa; font-size:0.83rem; margin-top:4px;">Просто открываешь этот файл в браузере. Работает без интернета (кроме момента публикации). Ничего устанавливать не нужно. Бесплатно.</p>
+            </div>
+
+            <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:14px;">
+                <strong style="color:#d4af37; font-size:0.9rem;">Вариант 2: Приложение на телефоне (рекомендую)</strong>
+                <p style="color:#aaa; font-size:0.83rem; margin-top:4px;">Добавляем генератор на сайт (скрытая страница, только для тебя). Потом на телефоне:</p>
+                <p style="color:#bbb; font-size:0.83rem; margin-top:6px;"><strong>Android:</strong> открой в Chrome → три точки ⋮ → «Добавить на главный экран»</p>
+                <p style="color:#bbb; font-size:0.83rem;"><strong>iPhone:</strong> открой в Safari → кнопка «Поделиться» ↑ → «На экран Домой»</p>
+                <p style="color:#aaa; font-size:0.83rem; margin-top:6px;">На экране появится иконка «ИМ» — как обычное приложение. Открывается в полный экран, без адресной строки. Никакого App Store, никакой платы.</p>
+            </div>
+
+            <div style="background:rgba(0,136,204,0.06); border:1px solid rgba(0,136,204,0.2); border-radius:8px; padding:14px;">
+                <strong style="color:#29b6f6; font-size:0.9rem;">Вариант 3: Telegram-бот (на будущее)</strong>
+                <p style="color:#aaa; font-size:0.83rem; margin-top:4px;">Пишешь боту в Telegram: «Отзыв, свадьба, Павел и Алина, цитата...» — бот собирает пост и публикует. Самый быстрый способ, но нужно настроить бота (могу сделать).</p>
+            </div>
+        </div>
+
+        <p style="color:#66bb6a; font-size:0.84rem; margin-top:14px;">Всё бесплатно. Сайт на бесплатном хостинге, API VK и Telegram бесплатные, App Store не нужен.</p>
+    </div>
+
+</div>
+
+<script>
+var selectedTemplate = 'review';
+
+function selectTemplate(t) {
+    selectedTemplate = t;
+    document.querySelectorAll('.tmpl-btn').forEach(function(el, i) {
+        var types = ['review','story','useful','behind'];
+        el.style.borderColor = types[i] === t ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.08)';
+        el.style.background = types[i] === t ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.02)';
+    });
+}
+
+var fearClosers = {
+    template: 'За 500+ мероприятий ни разу не повторил программу. Каждый праздник — новый сценарий.',
+    boring: 'Моя задача — чтобы КАЖДЫЙ гость ушёл с улыбкой. Даже тот, кто «не любит праздники».',
+    listen: 'Главный принцип: «Мы слышим вас, а не советуем как лучше». Ваш праздник — ваши правила.',
+    sound: 'Своё профессиональное звуковое оборудование. Музыка настроена идеально. Звук объёмный.',
+    age: 'Программа адаптируется под любую аудиторию. Бабушки довольны, молодняк веселится.',
+    experience: '500+ мероприятий за 10+ лет. Свадьбы, корпоративы, юбилеи, выпускные — любой формат.',
+    approach: 'Нахожу подход к каждому гостю. От камерных вечеров на 15 человек до банкетов на 200+.',
+    price: 'Стоимость зависит от формата. Напишите — рассчитаю индивидуально, без скрытых доплат.',
+    contract: 'Работаю по договору. Аванс фиксирует дату, полная оплата — после мероприятия.',
+    alcohol: 'За рулём, за пультом, за микрофоном — всегда трезв и в форме. Это принцип.'
+};
+
+function generate() {
+    var eventType = document.getElementById('eventType').value;
+    var clientName = document.getElementById('clientName').value.trim();
+    var quote = document.getElementById('quote').value.trim();
+    var detail = document.getElementById('detail').value.trim();
+    var fear = document.getElementById('fear').value;
+    var closer = fearClosers[fear] || '';
+    var post = '';
+
+    if (selectedTemplate === 'review') {
+        if (quote) {
+            post += quote + '\n\n';
+        } else {
+            post += '«Получилось ровно так, как хотелось!»\n\n';
+        }
+        if (clientName || eventType) {
+            post += 'Так написал' + (eventType === 'Свадьба' ? 'и ' : ' клиент после ') + (clientName ? clientName : '') + (eventType && !clientName ? eventType.toLowerCase() + 'а' : eventType ? ' после ' + eventType.toLowerCase().replace(/а$/, 'ы') : '') + '.\n';
+        }
+        if (detail) post += detail + '\n';
+        post += '\n';
+        if (closer) post += closer + '\n\n';
+        post += 'Расскажите о своём празднике — покажу, как это может быть.\n';
+        post += '+7 (967) 001-32-72 · @imshowman';
+    }
+    else if (selectedTemplate === 'story') {
+        post += (eventType || 'Мероприятие') + (clientName ? ' — ' + clientName : '') + '\n\n';
+        if (quote) post += quote + '\n\n';
+        if (detail) post += detail + '\n\n';
+        if (closer) post += closer + '\n\n';
+        post += 'Каждый праздник — своя история. Хотите свою?\n';
+        post += '+7 (967) 001-32-72 · @imshowman';
+    }
+    else if (selectedTemplate === 'useful') {
+        post += 'Совет от ведущего с 10+ летним опытом:\n\n';
+        if (quote) {
+            post += quote + '\n\n';
+        } else {
+            post += 'При выборе ведущего на ' + (eventType ? eventType.toLowerCase() : 'мероприятие') + ' обратите внимание на главное:\n\n';
+        }
+        if (closer) post += closer + '\n\n';
+        if (detail) post += detail + '\n\n';
+        post += 'Остались вопросы? Напишите — отвечу лично.\n';
+        post += '+7 (967) 001-32-72 · @imshowman';
+    }
+    else if (selectedTemplate === 'behind') {
+        post += 'Закулисье ведущего\n\n';
+        if (eventType) post += 'Готовлюсь к ' + eventType.toLowerCase().replace(/ь$/, 'ю').replace(/ив$/, 'иву').replace(/ой$/, 'ому') + '.\n';
+        if (detail) post += detail + '\n';
+        post += '\n';
+        if (quote) post += quote + '\n\n';
+        if (closer) post += closer + '\n\n';
+        post += 'То, что видят гости — результат подготовки. А подготовка начинается с разговора с вами.\n';
+        post += '+7 (967) 001-32-72 · @imshowman';
+    }
+
+    document.getElementById('resultBox').textContent = post;
+    document.getElementById('resultSection').classList.add('visible');
+    document.getElementById('copiedMsg').classList.remove('show');
+}
+
+function copyPost() {
+    var text = document.getElementById('resultBox').textContent;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+            document.getElementById('copiedMsg').classList.add('show');
+            setTimeout(function() { document.getElementById('copiedMsg').classList.remove('show'); }, 2000);
+        });
+    } else {
+        var range = document.createRange();
+        range.selectNode(document.getElementById('resultBox'));
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        document.getElementById('copiedMsg').classList.add('show');
+        setTimeout(function() { document.getElementById('copiedMsg').classList.remove('show'); }, 2000);
+    }
+}
+
+function clearForm() {
+    document.getElementById('eventType').value = '';
+    document.getElementById('clientName').value = '';
+    document.getElementById('quote').value = '';
+    document.getElementById('detail').value = '';
+    document.getElementById('fear').value = '';
+    document.getElementById('photos').value = '';
+    document.getElementById('photoPreview').innerHTML = '';
+    document.getElementById('resultSection').classList.remove('visible');
+}
+
+// --- Превью фото ---
+document.getElementById('photos').addEventListener('change', function() {
+    var preview = document.getElementById('photoPreview');
+    preview.innerHTML = '';
+    var files = this.files;
+    for (var i = 0; i < Math.min(files.length, 10); i++) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var item = document.createElement('div');
+            item.className = 'photo-item';
+            item.innerHTML = '<img src="' + e.target.result + '">';
+            preview.appendChild(item);
+        };
+        reader.readAsDataURL(files[i]);
+    }
+});
+
+// --- Настройки API ---
+function toggleSettings() {
+    var body = document.getElementById('settingsBody');
+    body.classList.toggle('open');
+    if (body.classList.contains('open')) loadSettings();
+}
+
+function loadSettings() {
+    document.getElementById('vkToken').value = localStorage.getItem('pg_vkToken') || '';
+    document.getElementById('vkGroupId').value = localStorage.getItem('pg_vkGroupId') || '';
+    document.getElementById('tgToken').value = localStorage.getItem('pg_tgToken') || '';
+    document.getElementById('tgChannel').value = localStorage.getItem('pg_tgChannel') || '';
+}
+
+function saveSettings() {
+    localStorage.setItem('pg_vkToken', document.getElementById('vkToken').value.trim());
+    localStorage.setItem('pg_vkGroupId', document.getElementById('vkGroupId').value.trim());
+    localStorage.setItem('pg_tgToken', document.getElementById('tgToken').value.trim());
+    localStorage.setItem('pg_tgChannel', document.getElementById('tgChannel').value.trim());
+    var msg = document.getElementById('settingsSaved');
+    msg.classList.add('show');
+    setTimeout(function() { msg.classList.remove('show'); }, 2000);
+}
+
+function showStatus(text, type) {
+    var el = document.getElementById('publishStatus');
+    el.textContent = text;
+    el.className = 'status-msg show ' + type;
+    if (type === 'ok') setTimeout(function() { el.classList.remove('show'); }, 5000);
+}
+
+// --- Загрузка фото в VK ---
+function uploadPhotosVK(token, groupId) {
+    var files = document.getElementById('photos').files;
+    if (!files.length) return Promise.resolve('');
+
+    // 1. Получить URL для загрузки
+    return fetch('https://api.vk.com/method/photos.getWallUploadServer?group_id=' + groupId + '&access_token=' + token + '&v=5.199')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) throw new Error('VK upload server: ' + data.error.error_msg);
+            var uploadUrl = data.response.upload_url;
+
+            // 2. Загрузить фото (по одному, VK принимает до 6 за раз через photo1-photo6)
+            var formData = new FormData();
+            for (var i = 0; i < Math.min(files.length, 6); i++) {
+                formData.append('photo' + (i + 1), files[i]);
+            }
+            return fetch(uploadUrl, { method: 'POST', body: formData });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(uploadResult) {
+            // 3. Сохранить фото
+            var params = 'group_id=' + groupId +
+                '&photo=' + encodeURIComponent(uploadResult.photo) +
+                '&server=' + uploadResult.server +
+                '&hash=' + uploadResult.hash +
+                '&access_token=' + token + '&v=5.199';
+            return fetch('https://api.vk.com/method/photos.saveWallPhoto?' + params);
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(saved) {
+            if (saved.error) throw new Error('VK save photo: ' + saved.error.error_msg);
+            // Собрать attachment строку: photo{owner_id}_{id}
+            return saved.response.map(function(p) { return 'photo' + p.owner_id + '_' + p.id; }).join(',');
+        });
+}
+
+// --- Публикация VK ---
+function publishVK() {
+    var text = document.getElementById('resultBox').textContent;
+    if (!text) { showStatus('Сначала сгенерируй пост', 'err'); return; }
+
+    var token = localStorage.getItem('pg_vkToken');
+    var groupId = localStorage.getItem('pg_vkGroupId');
+    if (!token || !groupId) { showStatus('Заполни VK токен и Group ID в настройках', 'err'); return; }
+
+    showStatus('Публикую в VK...', 'info');
+
+    uploadPhotosVK(token, groupId)
+        .then(function(attachments) {
+            var params = 'owner_id=-' + groupId +
+                '&from_group=1' +
+                '&message=' + encodeURIComponent(text) +
+                (attachments ? '&attachments=' + encodeURIComponent(attachments) : '') +
+                '&access_token=' + token + '&v=5.199';
+            return fetch('https://api.vk.com/method/wall.post?' + params);
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) throw new Error(data.error.error_msg);
+            showStatus('Опубликовано в VK! post_id: ' + data.response.post_id, 'ok');
+        })
+        .catch(function(e) { showStatus('Ошибка VK: ' + e.message, 'err'); });
+}
+
+// --- Публикация Telegram ---
+function publishTG() {
+    var text = document.getElementById('resultBox').textContent;
+    if (!text) { showStatus('Сначала сгенерируй пост', 'err'); return; }
+
+    var token = localStorage.getItem('pg_tgToken');
+    var channel = localStorage.getItem('pg_tgChannel');
+    if (!token || !channel) { showStatus('Заполни TG токен и канал в настройках', 'err'); return; }
+
+    showStatus('Отправляю в Telegram...', 'info');
+
+    var files = document.getElementById('photos').files;
+    var baseUrl = 'https://api.telegram.org/bot' + token;
+
+    if (files.length === 0) {
+        // Только текст
+        fetch(baseUrl + '/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: channel, text: text })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) throw new Error(data.description);
+            showStatus('Отправлено в Telegram!', 'ok');
+        })
+        .catch(function(e) { showStatus('Ошибка TG: ' + e.message, 'err'); });
+
+    } else if (files.length === 1) {
+        // Одно фото
+        var fd = new FormData();
+        fd.append('chat_id', channel);
+        fd.append('photo', files[0]);
+        fd.append('caption', text);
+        fetch(baseUrl + '/sendPhoto', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) throw new Error(data.description);
+            showStatus('Отправлено в Telegram с фото!', 'ok');
+        })
+        .catch(function(e) { showStatus('Ошибка TG: ' + e.message, 'err'); });
+
+    } else {
+        // Несколько фото — sendMediaGroup
+        var fd = new FormData();
+        fd.append('chat_id', channel);
+        var media = [];
+        for (var i = 0; i < Math.min(files.length, 10); i++) {
+            fd.append('photo' + i, files[i]);
+            media.push({
+                type: 'photo',
+                media: 'attach://photo' + i,
+                caption: i === 0 ? text : ''
+            });
+        }
+        fd.append('media', JSON.stringify(media));
+        fetch(baseUrl + '/sendMediaGroup', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) throw new Error(data.description);
+            showStatus('Отправлено в Telegram (' + Math.min(files.length, 10) + ' фото)!', 'ok');
+        })
+        .catch(function(e) { showStatus('Ошибка TG: ' + e.message, 'err'); });
+    }
+}
+
+// --- Публикация в оба ---
+function publishBoth() {
+    var text = document.getElementById('resultBox').textContent;
+    if (!text) { showStatus('Сначала сгенерируй пост', 'err'); return; }
+    showStatus('Публикую в VK и Telegram...', 'info');
+
+    var vkDone = false, tgDone = false, errors = [];
+
+    function checkBoth() {
+        if (vkDone && tgDone) {
+            if (errors.length === 0) showStatus('Опубликовано в VK и Telegram!', 'ok');
+            else showStatus('Частично: ' + errors.join('; '), 'err');
+        }
+    }
+
+    // VK
+    var vkToken = localStorage.getItem('pg_vkToken');
+    var vkGroup = localStorage.getItem('pg_vkGroupId');
+    if (!vkToken || !vkGroup) {
+        errors.push('VK: нет токена/группы'); vkDone = true; checkBoth();
+    } else {
+        uploadPhotosVK(vkToken, vkGroup)
+            .then(function(att) {
+                var params = 'owner_id=-' + vkGroup + '&from_group=1&message=' + encodeURIComponent(text) +
+                    (att ? '&attachments=' + encodeURIComponent(att) : '') +
+                    '&access_token=' + vkToken + '&v=5.199';
+                return fetch('https://api.vk.com/method/wall.post?' + params);
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.error) throw new Error(d.error.error_msg); })
+            .catch(function(e) { errors.push('VK: ' + e.message); })
+            .then(function() { vkDone = true; checkBoth(); });
+    }
+
+    // TG
+    var tgTk = localStorage.getItem('pg_tgToken');
+    var tgCh = localStorage.getItem('pg_tgChannel');
+    if (!tgTk || !tgCh) {
+        errors.push('TG: нет токена/канала'); tgDone = true; checkBoth();
+    } else {
+        var files = document.getElementById('photos').files;
+        var baseUrl = 'https://api.telegram.org/bot' + tgTk;
+        var p;
+        if (files.length === 0) {
+            p = fetch(baseUrl + '/sendMessage', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ chat_id: tgCh, text: text })
+            });
+        } else if (files.length === 1) {
+            var fd = new FormData();
+            fd.append('chat_id', tgCh); fd.append('photo', files[0]); fd.append('caption', text);
+            p = fetch(baseUrl + '/sendPhoto', { method: 'POST', body: fd });
+        } else {
+            var fd = new FormData();
+            fd.append('chat_id', tgCh);
+            var media = [];
+            for (var i = 0; i < Math.min(files.length, 10); i++) {
+                fd.append('photo' + i, files[i]);
+                media.push({ type:'photo', media:'attach://photo'+i, caption: i===0?text:'' });
+            }
+            fd.append('media', JSON.stringify(media));
+            p = fetch(baseUrl + '/sendMediaGroup', { method: 'POST', body: fd });
+        }
+        p.then(function(r) { return r.json(); })
+        .then(function(d) { if (!d.ok && d.description) throw new Error(d.description); })
+        .catch(function(e) { errors.push('TG: ' + e.message); })
+        .then(function() { tgDone = true; checkBoth(); });
+    }
+}
+
+selectTemplate('review');
+</script>
+
+</body>
+</html>
